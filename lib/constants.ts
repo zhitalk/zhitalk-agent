@@ -11,3 +11,12 @@ export const isTestEnvironment = Boolean(
 export const guestRegex = /^guest-\d+$/;
 
 export const DUMMY_PASSWORD = generateDummyPassword();
+
+/**
+ * Determines if secure cookies should be used based on the request URL.
+ * Secure cookies are only used when the request is over HTTPS.
+ */
+export function shouldUseSecureCookie(url: string | URL): boolean {
+  const urlObj = typeof url === "string" ? new URL(url) : url;
+  return urlObj.protocol === "https:";
+}
