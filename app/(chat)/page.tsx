@@ -5,6 +5,8 @@ import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateUUID } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export default function Page() {
   return (
     <Suspense fallback={<div className="flex h-dvh" />}>

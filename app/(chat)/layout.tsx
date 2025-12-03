@@ -6,6 +6,8 @@ import { DataStreamProvider } from "@/components/data-stream-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "../(auth)/auth";
 
+export const dynamic = "force-dynamic";
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
