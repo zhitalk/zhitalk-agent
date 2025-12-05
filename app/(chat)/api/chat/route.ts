@@ -96,6 +96,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    // @ts-ignore
     const {
       id,
       message,
@@ -125,6 +126,32 @@ export async function POST(request: Request) {
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 
+    // console.log("message...", message)
+
+    // Extract base64 from file parts and create newMessage 
+    let base64Value: string | undefined;
+    const newParts = message.parts.map((part) => {
+      if (
+        part.type === "file" &&
+        "base64" in part &&
+        typeof part.base64 === "string"
+      ) {
+        base64Value = part.base64;
+        // @ts-ignore Create a new text part 
+        return { type: "text", text: `<${part.name as string}>` };
+      }
+      return part;
+    });
+
+    const newMessage: ChatMessage = {
+      ...message,
+      // @ts-ignore 
+      parts: newParts,
+    };
+
+    console.log("base64 value:", base64Value);
+    console.log("newMessage...", newMessage)
+
     const chat = await getChatById({ id });
     let messagesFromDb: DBMessage[] = [];
 
@@ -136,7 +163,7 @@ export async function POST(request: Request) {
       messagesFromDb = await getMessagesByChatId({ id });
     } else {
       const title = await generateTitleFromUserMessage({
-        message,
+        message: newMessage,
       });
 
       await saveChat({
@@ -148,7 +175,7 @@ export async function POST(request: Request) {
       // New chat - no need to fetch messages, it's empty
     }
 
-    const uiMessages = [...convertToUIMessages(messagesFromDb), message];
+    const uiMessages = [...convertToUIMessages(messagesFromDb), newMessage];
 
     const { longitude, latitude, city, country } = geolocation(request);
 
@@ -163,9 +190,9 @@ export async function POST(request: Request) {
       messages: [
         {
           chatId: id,
-          id: message.id,
+          id: newMessage.id,
           role: "user",
-          parts: message.parts,
+          parts: newMessage.parts,
           attachments: [],
           createdAt: new Date(),
         },

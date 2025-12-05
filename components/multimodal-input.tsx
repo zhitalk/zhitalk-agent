@@ -46,6 +46,23 @@ import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
 
+const readFileAsBase64 = (inputFile: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        // Remove the data URL prefix (e.g., "data:image/png;base64,")
+        const base64 = result.split(",")[1] ?? "";
+        resolve(base64);
+      } else {
+        reject(new Error("Failed to read file as base64 string."));
+      }
+    };
+    reader.onerror = () => reject(new Error("FileReader error"));
+    reader.readAsDataURL(inputFile);
+});
+
 function PureMultimodalInput({
   chatId,
   input,
@@ -137,6 +154,7 @@ function PureMultimodalInput({
         ...attachments.map((attachment) => ({
           type: "file" as const,
           url: attachment.url,
+          base64: attachment.base64,
           name: attachment.name,
           mediaType: attachment.contentType,
         })),
@@ -167,32 +185,32 @@ function PureMultimodalInput({
     resetHeight,
   ]);
 
-  const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
+  // const uploadFile = useCallback(async (file: File) => {
+  //   const formData = new FormData();
+  //   formData.append("file", file);
 
-    try {
-      const response = await fetch("/api/files/upload", {
-        method: "POST",
-        body: formData,
-      });
+  //   try {
+  //     const response = await fetch("/api/files/upload", {
+  //       method: "POST",
+  //       body: formData,
+  //     });
 
-      if (response.ok) {
-        const data = await response.json();
-        const { url, pathname, contentType } = data;
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       const { url, pathname, contentType } = data;
 
-        return {
-          url,
-          name: pathname,
-          contentType,
-        };
-      }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
-    }
-  }, []);
+  //       return {
+  //         url,
+  //         name: pathname,
+  //         contentType,
+  //       };
+  //     }
+  //     const { error } = await response.json();
+  //     toast.error(error);
+  //   } catch (_error) {
+  //     toast.error("Failed to upload file, please try again!");
+  //   }
+  // }, []);
 
   const contextProps = useMemo(
     () => ({
@@ -204,87 +222,83 @@ function PureMultimodalInput({
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
+      const file = files[0];
 
-      setUploadQueue(files.map((file) => file.name));
-
-      try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
-        );
-
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
-      } catch (error) {
-        console.error("Error uploading files!", error);
-      } finally {
-        setUploadQueue([]);
-      }
-    },
-    [setAttachments, uploadFile]
-  );
-
-  const handlePaste = useCallback(
-    async (event: ClipboardEvent) => {
-      const items = event.clipboardData?.items;
-      if (!items) {
+      if (!file) {
         return;
       }
 
-      const imageItems = Array.from(items).filter((item) =>
-        item.type.startsWith("image/")
-      );
-
-      if (imageItems.length === 0) {
-        return;
-      }
-
-      // Prevent default paste behavior for images
-      event.preventDefault();
-
-      setUploadQueue((prev) => [...prev, "Pasted image"]);
-
-      try {
-        const uploadPromises = imageItems
-          .map((item) => item.getAsFile())
-          .filter((file): file is File => file !== null)
-          .map((file) => uploadFile(file));
-
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) =>
-            attachment !== undefined &&
-            attachment.url !== undefined &&
-            attachment.contentType !== undefined
-        );
-
-        setAttachments((curr) => [
-          ...curr,
-          ...(successfullyUploadedAttachments as Attachment[]),
-        ]);
-      } catch (error) {
-        console.error("Error uploading pasted images:", error);
-        toast.error("Failed to upload pasted image(s)");
-      } finally {
-        setUploadQueue([]);
-      }
+      const base64 = await readFileAsBase64(file);
+      setAttachments([
+        {
+          name: file.name,
+          url: "",
+          base64,
+          contentType: file.type,
+        }
+      ]);
     },
-    [setAttachments, uploadFile]
+    [setAttachments]
   );
 
-  // Add paste event listener to textarea
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
+  // const handlePaste = useCallback(
+  //   async (event: ClipboardEvent) => {
+  //     const items = event.clipboardData?.items;
+  //     if (!items) {
+  //       return;
+  //     }
 
-    textarea.addEventListener("paste", handlePaste);
-    return () => textarea.removeEventListener("paste", handlePaste);
-  }, [handlePaste]);
+  //     const imageItems = Array.from(items).filter((item) =>
+  //       item.type.startsWith("image/")
+  //     );
+
+  //     if (imageItems.length === 0) {
+  //       return;
+  //     }
+
+  //     // Prevent default paste behavior for images
+  //     event.preventDefault();
+
+  //     setUploadQueue((prev) => [...prev, "Pasted image"]);
+
+  //     try {
+  //       const uploadPromises = imageItems
+  //         .map((item) => item.getAsFile())
+  //         .filter((file): file is File => file !== null)
+  //         .map((file) => uploadFile(file));
+
+  //       const uploadedAttachments = await Promise.all(uploadPromises);
+  //       const successfullyUploadedAttachments = uploadedAttachments.filter(
+  //         (attachment) =>
+  //           attachment !== undefined &&
+  //           attachment.url !== undefined &&
+  //           attachment.contentType !== undefined
+  //       );
+
+  //       setAttachments((curr) => [
+  //         ...curr,
+  //         ...(successfullyUploadedAttachments as Attachment[]),
+  //       ]);
+  //     } catch (error) {
+  //       console.error("Error uploading pasted images:", error);
+  //       toast.error("Failed to upload pasted image(s)");
+  //     } finally {
+  //       setUploadQueue([]);
+  //     }
+  //   },
+  //   [setAttachments, uploadFile]
+  // );
+
+  // // Add paste event listener to textarea
+  // useEffect(() => {
+  //   const textarea = textareaRef.current;
+  //   if (!textarea) {
+  //     return;
+  //   }
+
+  //   textarea.addEventListener("paste", handlePaste);
+  //   return () => textarea.removeEventListener("paste", handlePaste);
+  // }, [handlePaste]);
 
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
@@ -300,7 +314,8 @@ function PureMultimodalInput({
 
       <input
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
-        multiple
+        accept="application/pdf"
+        // multiple
         onChange={handleFileChange}
         ref={fileInputRef}
         tabIndex={-1}

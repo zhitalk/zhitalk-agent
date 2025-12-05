@@ -28,6 +28,43 @@ export const PreviewAttachment = ({
           src={url}
           width={64}
         />
+      ) : contentType?.includes("pdf") ? (
+        <div
+          className="flex items-center justify-center text-muted-foreground text-xs"
+          style={{ width: 52, height: 52 }}
+          aria-label="PDF attachment"
+        >
+          {/* Inline SVG for a PDF icon with accessible title */}
+          <svg
+            width={52}
+            height={52}
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+            focusable="false"
+            role="img"
+          >
+            <title>PDF file</title>
+            <rect x="3" y="3" width="18" height="18" rx="2" fill="#E2E2E2" />
+            <path
+              d="M7.5 17V7H12c2.5 0 5.5.5 5.5 5s-3 5-5.5 5H7.5Zm3-8v6M7.5 11h8"
+              stroke="#B91C1C"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <text
+              x="12"
+              y="18"
+              textAnchor="middle"
+              fontSize="6"
+              fill="#B91C1C"
+              aria-hidden="true"
+            >
+              PDF
+            </text>
+          </svg>
+        </div>
       ) : (
         <div className="flex size-full items-center justify-center text-muted-foreground text-xs">
           File
