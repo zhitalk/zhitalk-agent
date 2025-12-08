@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PlusIcon, VercelIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
+import { BookIcon } from "lucide-react";
 
 function PureChatHeader({
   chatId,
@@ -55,12 +56,12 @@ function PureChatHeader({
         className="order-3 hidden bg-zinc-900 px-2 text-zinc-50 hover:bg-zinc-800 md:ml-auto md:flex md:h-fit dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
         <Link
-          href={"https://vercel.com/templates/next.js/nextjs-ai-chatbot"}
+          href={"https://www.huashuiai.com/pub/ai-agent-camp"}
           rel="noreferrer"
           target="_noblank"
         >
-          <VercelIcon size={16} />
-          Deploy with Vercel
+          <BookIcon size={16} />
+          学习该项目
         </Link>
       </Button>
     </header>

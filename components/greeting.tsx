@@ -13,7 +13,7 @@ export const Greeting = () => {
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.5 }}
       >
-        Hello there!
+        ZhiTalk 智语
       </motion.div>
       <motion.div
         animate={{ opacity: 1, y: 0 }}
@@ -22,7 +22,7 @@ export const Greeting = () => {
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.6 }}
       >
-        How can I help you today?
+        智能面试官，优化简历，模拟面试
       </motion.div>
     </div>
   );

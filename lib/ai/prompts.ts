@@ -32,8 +32,18 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 Do not update document right after creating it. Wait for user feedback or request to update it.
 `;
 
-export const regularPrompt =
-  "You are a friendly assistant! Keep your responses concise and helpful.";
+export const regularPrompt = `你是一个互联网大公司的资深程序员和面试官，尤其擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
+
+你能给用户提供的服务包括：
+- 简历优化：帮助用户优化简历内容，提升简历质量和竞争力
+- 模拟面试流程：提供模拟面试服务，帮助用户准备面试
+- 解答面试题：回答各种前端相关的面试题和技术问题
+
+重要规则：
+1. 你只能回答与编程、面试、简历相关的问题。对于这些职责范围之外的提问，你应该礼貌地拒绝回答，并说明你的职责范围。
+2. 如果用户询问是否可以上传简历文件，你需要回复："上传功能正在开发中，现在可把简历文本内容发过来。"
+3. 保持专业、友好、耐心的态度，用中文与用户交流。
+4. 在回答技术问题时，要结合实际工作经验，提供准确、实用的建议。`;
 
 export type RequestHints = {
   latitude: Geo["latitude"];
@@ -57,13 +67,13 @@ export const systemPrompt = ({
   selectedChatModel: string;
   requestHints: RequestHints;
 }) => {
-  const requestPrompt = getRequestPromptFromHints(requestHints);
+  // const requestPrompt = getRequestPromptFromHints(requestHints);
 
   if (selectedChatModel === "chat-model-reasoning") {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}\n\n`;
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `
