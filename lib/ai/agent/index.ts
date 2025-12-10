@@ -31,17 +31,29 @@ export function createChatStream({
     execute: async ({ writer: dataStream }) => {
       // 先进行消息分类
       const classification = await classifyMessages(messages);
-      console.log("classification => ", classification);
+      // console.log("classification => ", classification);
 
       let result;
 
       // 根据分类结果选择不同的处理方式
       if (classification.resume_opt) {
         // 简历优化
-        result = createResumeOptStream(messages);
+        result = createResumeOptStream({
+          messages,
+          dataStream,
+          onUsageUpdate: (usage) => {
+            finalMergedUsage = usage;
+          },
+        });
       } else if (classification.mock_interview) {
         // 模拟面试
-        result = createMockInterviewStream(messages);
+        result = createMockInterviewStream({
+          messages,
+          dataStream,
+          onUsageUpdate: (usage) => {
+            finalMergedUsage = usage;
+          },
+        });
       } else {
         // 其他情况，执行原有逻辑
         result = createDefaultStream({

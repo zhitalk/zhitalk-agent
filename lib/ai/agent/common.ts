@@ -3,6 +3,7 @@ import {
   smoothStream,
   stepCountIs,
   streamText,
+  type LanguageModelUsage,
   type UIMessageStreamWriter,
 } from "ai";
 import { unstable_cache as cache } from "next/cache";
@@ -36,6 +37,69 @@ const getTokenlensCatalog = cache(
   ["tokenlens-catalog"],
   { revalidate: 24 * 60 * 60 } // 24 hours
 );
+
+export type CreateUsageFinishHandlerOptions = {
+  modelId: string | undefined;
+  dataStream: UIMessageStreamWriter<ChatMessage>;
+  onUsageUpdate?: (usage: AppUsage) => void;
+};
+
+/**
+ * 创建 usage finish 处理函数，用于处理 TokenLens enrichment 和 usage 更新
+ * 这是一个公共函数，可以在不同的 stream 创建函数中复用
+ */
+export function createUsageFinishHandler({
+  modelId,
+  dataStream,
+  onUsageUpdate,
+}: CreateUsageFinishHandlerOptions) {
+  return async ({ usage }: { usage: LanguageModelUsage }) => {
+    try {
+      const providers = await getTokenlensCatalog();
+      if (!modelId) {
+        const finalMergedUsage = usage;
+        dataStream.write({
+          type: "data-usage",
+          data: finalMergedUsage,
+        });
+        if (onUsageUpdate) {
+          onUsageUpdate(finalMergedUsage);
+        }
+        return;
+      }
+
+      if (!providers) {
+        const finalMergedUsage = usage;
+        dataStream.write({
+          type: "data-usage",
+          data: finalMergedUsage,
+        });
+        if (onUsageUpdate) {
+          onUsageUpdate(finalMergedUsage);
+        }
+        return;
+      }
+
+      const summary = getUsage({ modelId, usage, providers });
+      const finalMergedUsage = {
+        ...usage,
+        ...summary,
+        modelId,
+      } as AppUsage;
+      dataStream.write({ type: "data-usage", data: finalMergedUsage });
+      if (onUsageUpdate) {
+        onUsageUpdate(finalMergedUsage);
+      }
+    } catch (err) {
+      console.warn("TokenLens enrichment failed", err);
+      const finalMergedUsage = usage;
+      dataStream.write({ type: "data-usage", data: finalMergedUsage });
+      if (onUsageUpdate) {
+        onUsageUpdate(finalMergedUsage);
+      }
+    }
+  };
+}
 
 export type CreateDefaultStreamOptions = {
   messages: ChatMessage[];
@@ -82,54 +146,11 @@ export function createDefaultStream({
       isEnabled: isProductionEnvironment,
       functionId: "stream-text",
     },
-    onFinish: async ({ usage }) => {
-      try {
-        const providers = await getTokenlensCatalog();
-        const modelId =
-          myProvider.languageModel(selectedChatModel).modelId;
-        if (!modelId) {
-          const finalMergedUsage = usage;
-          dataStream.write({
-            type: "data-usage",
-            data: finalMergedUsage,
-          });
-          if (onUsageUpdate) {
-            onUsageUpdate(finalMergedUsage);
-          }
-          return;
-        }
-
-        if (!providers) {
-          const finalMergedUsage = usage;
-          dataStream.write({
-            type: "data-usage",
-            data: finalMergedUsage,
-          });
-          if (onUsageUpdate) {
-            onUsageUpdate(finalMergedUsage);
-          }
-          return;
-        }
-
-        const summary = getUsage({ modelId, usage, providers });
-        const finalMergedUsage = {
-          ...usage,
-          ...summary,
-          modelId,
-        } as AppUsage;
-        dataStream.write({ type: "data-usage", data: finalMergedUsage });
-        if (onUsageUpdate) {
-          onUsageUpdate(finalMergedUsage);
-        }
-      } catch (err) {
-        console.warn("TokenLens enrichment failed", err);
-        const finalMergedUsage = usage;
-        dataStream.write({ type: "data-usage", data: finalMergedUsage });
-        if (onUsageUpdate) {
-          onUsageUpdate(finalMergedUsage);
-        }
-      }
-    },
+    onFinish: createUsageFinishHandler({
+      modelId: myProvider.languageModel(selectedChatModel).modelId,
+      dataStream,
+      onUsageUpdate,
+    }),
   });
 }
 
