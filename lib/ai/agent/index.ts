@@ -21,6 +21,9 @@ import { updateDocument } from "@/lib/ai/tools/update-document";
 import { isProductionEnvironment } from "@/lib/constants";
 import type { AppUsage } from "@/lib/usage";
 import { generateUUID } from "@/lib/utils";
+import { classifyMessages } from "@/lib/ai/agent/classify";
+import { createResumeOptStream } from "@/lib/ai/agent/resume-opt";
+import { createMockInterviewStream } from "@/lib/ai/agent/mock-interview";
 
 const getTokenlensCatalog = cache(
   async (): Promise<ModelCatalog | undefined> => {
@@ -56,68 +59,84 @@ export function createChatStream({
   let finalMergedUsage: AppUsage | undefined;
 
   const stream = createUIMessageStream({
-    execute: ({ writer: dataStream }) => {
-      const result = streamText({
-        model: myProvider.languageModel(selectedChatModel),
-        system: systemPrompt({ selectedChatModel, requestHints }),
-        messages: convertToModelMessages(messages),
-        stopWhen: stepCountIs(5),
-        experimental_activeTools:
-          selectedChatModel === "chat-model-reasoning"
-            ? []
-            : [
-                "getWeather",
-                "createDocument",
-                "updateDocument",
-                "requestSuggestions",
-              ],
-        experimental_transform: smoothStream({ chunking: "word" }),
-        tools: {
-          getWeather,
-          createDocument: createDocument({ session, dataStream }),
-          updateDocument: updateDocument({ session, dataStream }),
-          requestSuggestions: requestSuggestions({
-            session,
-            dataStream,
-          }),
-        },
-        experimental_telemetry: {
-          isEnabled: isProductionEnvironment,
-          functionId: "stream-text",
-        },
-        onFinish: async ({ usage }) => {
-          try {
-            const providers = await getTokenlensCatalog();
-            const modelId =
-              myProvider.languageModel(selectedChatModel).modelId;
-            if (!modelId) {
-              finalMergedUsage = usage;
-              dataStream.write({
-                type: "data-usage",
-                data: finalMergedUsage,
-              });
-              return;
-            }
+    execute: async ({ writer: dataStream }) => {
+      // 先进行消息分类
+      const classification = await classifyMessages(messages);
+      console.log("classification => ", classification);
 
-            if (!providers) {
-              finalMergedUsage = usage;
-              dataStream.write({
-                type: "data-usage",
-                data: finalMergedUsage,
-              });
-              return;
-            }
+      let result;
 
-            const summary = getUsage({ modelId, usage, providers });
-            finalMergedUsage = { ...usage, ...summary, modelId } as AppUsage;
-            dataStream.write({ type: "data-usage", data: finalMergedUsage });
-          } catch (err) {
-            console.warn("TokenLens enrichment failed", err);
-            finalMergedUsage = usage;
-            dataStream.write({ type: "data-usage", data: finalMergedUsage });
-          }
-        },
-      });
+      // 根据分类结果选择不同的处理方式
+      if (classification.resume_opt) {
+        // 简历优化
+        result = createResumeOptStream(messages);
+      } else if (classification.mock_interview) {
+        // 模拟面试
+        result = createMockInterviewStream(messages);
+      } else {
+        // 其他情况，执行原有逻辑
+        result = streamText({
+          model: myProvider.languageModel(selectedChatModel),
+          system: systemPrompt({ selectedChatModel, requestHints }),
+          messages: convertToModelMessages(messages),
+          stopWhen: stepCountIs(5),
+          experimental_activeTools:
+            selectedChatModel === "chat-model-reasoning"
+              ? []
+              : [
+                  "getWeather",
+                  "createDocument",
+                  "updateDocument",
+                  "requestSuggestions",
+                ],
+          experimental_transform: smoothStream({ chunking: "word" }),
+          tools: {
+            getWeather,
+            createDocument: createDocument({ session, dataStream }),
+            updateDocument: updateDocument({ session, dataStream }),
+            requestSuggestions: requestSuggestions({
+              session,
+              dataStream,
+            }),
+          },
+          experimental_telemetry: {
+            isEnabled: isProductionEnvironment,
+            functionId: "stream-text",
+          },
+          onFinish: async ({ usage }) => {
+            try {
+              const providers = await getTokenlensCatalog();
+              const modelId =
+                myProvider.languageModel(selectedChatModel).modelId;
+              if (!modelId) {
+                finalMergedUsage = usage;
+                dataStream.write({
+                  type: "data-usage",
+                  data: finalMergedUsage,
+                });
+                return;
+              }
+
+              if (!providers) {
+                finalMergedUsage = usage;
+                dataStream.write({
+                  type: "data-usage",
+                  data: finalMergedUsage,
+                });
+                return;
+              }
+
+              const summary = getUsage({ modelId, usage, providers });
+              finalMergedUsage = { ...usage, ...summary, modelId } as AppUsage;
+              dataStream.write({ type: "data-usage", data: finalMergedUsage });
+            } catch (err) {
+              console.warn("TokenLens enrichment failed", err);
+              finalMergedUsage = usage;
+              dataStream.write({ type: "data-usage", data: finalMergedUsage });
+            }
+          },
+        });
+      }
 
       result.consumeStream();
 
