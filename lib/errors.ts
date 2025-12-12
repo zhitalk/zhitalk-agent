@@ -8,6 +8,7 @@ export type ErrorType =
 
 export type Surface =
   | "chat"
+  | "chat_api"
   | "auth"
   | "api"
   | "stream"
@@ -25,6 +26,7 @@ export type ErrorVisibility = "response" | "log" | "none";
 export const visibilityBySurface: Record<Surface, ErrorVisibility> = {
   database: "log",
   chat: "response",
+  chat_api: "response",
   auth: "response",
   stream: "response",
   api: "response",
@@ -40,7 +42,7 @@ export class ChatSDKError extends Error {
   surface: Surface;
   statusCode: number;
 
-  constructor(errorCode: ErrorCode, cause?: string) {
+  constructor(errorCode: ErrorCode, cause?: string, customMessage?: string) {
     super();
 
     const [type, surface] = errorCode.split(":");
@@ -48,7 +50,7 @@ export class ChatSDKError extends Error {
     this.type = type as ErrorType;
     this.cause = cause;
     this.surface = surface as Surface;
-    this.message = getMessageByErrorCode(errorCode);
+    this.message = customMessage ?? getMessageByErrorCode(errorCode);
     this.statusCode = getStatusCodeByType(this.type);
   }
 
@@ -93,7 +95,9 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
       return "Your account does not have access to this feature.";
 
     case "rate_limit:chat":
-      return "You have exceeded your maximum number of messages for the day. Please try again later.";
+      return "您已超出今日消息数量上限，请稍后再试。";
+    case "rate_limit:chat_api":
+      return "您已超出每日聊天请求上限，请明天再试。";
     case "not_found:chat":
       return "The requested chat was not found. Please check the chat ID and try again.";
     case "forbidden:chat":

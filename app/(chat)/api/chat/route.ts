@@ -1,5 +1,6 @@
 import { geolocation } from "@vercel/functions";
 import { JsonToSseTransformStream } from "ai";
+import { createResumableStreamContext } from "resumable-stream";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
@@ -9,9 +10,11 @@ import type { RequestHints } from "@/lib/ai/prompts";
 import {
   createStreamId,
   deleteChatById,
+  getChatApiCallCountByUserId,
   getChatById,
   getMessageCountByUserId,
   getMessagesByChatId,
+  recordChatApiCall,
   saveChat,
   saveMessages,
   updateChatLastContextById,
@@ -24,6 +27,18 @@ import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
 export const maxDuration = 60;
+
+let streamContext: ReturnType<typeof createResumableStreamContext> | null = null;
+
+export function getStreamContext() {
+  if (!streamContext) {
+    streamContext = createResumableStreamContext({
+      keyPrefix: "resumable-stream",
+      waitUntil: null,
+    });
+  }
+  return streamContext;
+}
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -55,6 +70,26 @@ export async function POST(request: Request) {
     }
 
     const userType: UserType = session.user.type;
+
+    // Check API call limit first
+    const apiCallCount: number = await getChatApiCallCountByUserId({
+      id: session.user.id,
+      differenceInHours: 24,
+    });
+
+    // @ts-ignore
+    const maxApiCalls = entitlementsByUserType[userType].maxChatApiCallsPerDay;
+    console.log('apiCallCount => ', apiCallCount);
+    if (apiCallCount >= maxApiCalls) {
+      const errorMessage =
+        userType === "guest"
+          ? "您今天的聊天请求次数已用完（10次/天）。请明天再试，或注册账号获得更多次数（30次/天）。"
+          : "您今天的聊天请求次数已用完（30次/天）。请明天再试。";
+      return new ChatSDKError("rate_limit:chat_api", undefined, errorMessage).toResponse();
+    }
+
+    // Record this API call
+    await recordChatApiCall({ userId: session.user.id });
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
