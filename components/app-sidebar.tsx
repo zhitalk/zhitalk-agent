@@ -70,7 +70,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   setOpenMobile(false);
                 }}
               >
-                <span className="cursor-pointer rounded-md px-2 font-semibold text-lg hover:bg-muted">
+                <span className="cursor-pointer rounded-md px-2 font-semibold text-lg hover:bg-muted text-blue-600">
                   ZhiTalk 智语
                 </span>
               </Link>
