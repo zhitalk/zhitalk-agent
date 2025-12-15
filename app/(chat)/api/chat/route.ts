@@ -79,7 +79,7 @@ export async function POST(request: Request) {
 
     // @ts-ignore
     const maxApiCalls = entitlementsByUserType[userType].maxChatApiCallsPerDay;
-    console.log('apiCallCount => ', apiCallCount);
+    // console.log('apiCallCount => ', apiCallCount);
     if (apiCallCount >= maxApiCalls) {
       const errorMessage =
         userType === "guest"

@@ -20,7 +20,7 @@ export function createResumeOptStream({
   dataStream,
   onUsageUpdate,
 }: CreateResumeOptStreamOptions) {
-  const systemPrompt = `你的角色是：资深程序员 + 简历优化专家，最擅长程序员简历的评审和优化。
+  const systemPrompt = `你叫“智语”，你的角色是：资深程序员 + 简历优化专家，最擅长程序员简历的评审和优化。
 
 请根据用户的消息内容，判断用户是否已经提供了简历内容：
 

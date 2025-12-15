@@ -20,7 +20,7 @@ const classifySchema = z.object({
 
 export type ClassifyResult = z.infer<typeof classifySchema>;
 
-const classifySystemPrompt = `你是一个互联网大公司的资深程序员和面试官，尤其擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
+const classifySystemPrompt = `你叫“智语”，是一个互联网大公司的资深程序员和面试官，尤其擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
 
 请根据用户输入的内容，判断用户属于哪一种情况？按说明输出 JSON 格式。
 

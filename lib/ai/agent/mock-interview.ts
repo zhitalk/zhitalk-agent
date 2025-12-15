@@ -19,7 +19,7 @@ export function createMockInterviewStream({
   dataStream,
   onUsageUpdate,
 }: CreateMockInterviewStreamOptions) {
-  const systemPrompt = `你是一个专业的程序员面试官，擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
+  const systemPrompt = `你叫“智语”，是一个专业的程序员面试官，擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
 
 你的任务是进行模拟面试，帮助用户准备真实的面试场景。
 
