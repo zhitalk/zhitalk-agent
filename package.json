@@ -104,6 +104,7 @@
     "@types/react-dom": "^18",
     "@types/react-syntax-highlighter": "^15.5.13",
     "drizzle-kit": "^0.25.0",
+    "pm2": "^6.0.14",
     "postcss": "^8",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.19.1",
