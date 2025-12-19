@@ -4,6 +4,7 @@ import { myProvider } from "@/lib/ai/providers";
 import { createUsageFinishHandler } from "@/lib/ai/agent/common";
 import type { AppUsage } from "@/lib/usage";
 import { scoreSkills } from "@/lib/ai/tools/score-skills";
+import { getResumeTemplateTool } from "@/lib/ai/tools/resume-template";
 
 export type CreateResumeOptStreamOptions = {
   messages: ChatMessage[];
@@ -30,7 +31,9 @@ export function createResumeOptStream({
    - 提醒用户隐藏个人信息（如姓名、电话、邮箱等敏感信息）
    - 说明后续会如何帮助评审和优化简历
 
-2. **如果用户已经提供了简历内容**：
+2. 如果用户想要简历模板，直接调用 getResumeTemplateTool 工具获取简历模板，你不要自己生成简历模板。
+
+3. **如果用户已经提供了简历内容**：
    
    **评审简历需要关注以下方面：**
    - 毕业学校是否有优势，专业是否是计算机相关专业。毕业时间越短，学校的影响越大
@@ -63,10 +66,14 @@ export function createResumeOptStream({
     model,
     system: systemPrompt,
     messages: convertToModelMessages(messages),
-    // experimental_activeTools: ["scoreSkills"],
-    // tools: {
-    //   scoreSkills,
-    // },
+    experimental_activeTools: [
+      // "scoreSkills",
+      "getResumeTemplate"
+    ],
+    tools: {
+      // scoreSkills,
+      getResumeTemplate: getResumeTemplateTool,
+    },
     onFinish: createUsageFinishHandler({
       modelId: model.modelId,
       dataStream,
