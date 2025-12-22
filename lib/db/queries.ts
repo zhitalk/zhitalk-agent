@@ -638,3 +638,20 @@ export async function getChatApiCallCountByUserId({
     );
   }
 }
+
+export async function getFirstChatId(): Promise<string | null> {
+  try {
+    const [firstChat] = await db
+      .select({ id: chat.id })
+      .from(chat)
+      .orderBy(asc(chat.createdAt))
+      .limit(1);
+
+    return firstChat?.id ?? null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get first chat id"
+    );
+  }
+}
