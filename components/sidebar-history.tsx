@@ -148,7 +148,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     setShowDeleteDialog(false);
 
     if (deleteId === id) {
-      router.push("/");
+      router.push("/chat");
     }
   };
 
