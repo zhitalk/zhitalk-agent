@@ -94,8 +94,8 @@ export default function RootLayout({
               var _hmt = _hmt || [];
               (function() {
                 var hm = document.createElement("script");
-                hm.src = "https://hm.baidu.com/hm.js?4d48c90dc662c5cd45f8fdb2125016e0";
-                var s = document.getElementsByTagName("script")[0];
+                hm.src = "https://hm.baidu.com/hm.js?2f22a4c22f8052a4d646a7fc220edc6c";
+                var s = document.getElementsByTagName("script")[0]; 
                 s.parentNode.insertBefore(hm, s);
               })();
             `,
