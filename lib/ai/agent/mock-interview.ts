@@ -3,7 +3,7 @@ import type { ChatMessage } from "@/lib/types";
 import { myProvider } from "@/lib/ai/providers";
 import { createUsageFinishHandler } from "@/lib/ai/agent/common";
 import type { AppUsage } from "@/lib/usage";
-import { getBehaviouralQuestionsTool } from "@/lib/ai/tools/behavioural-questions";
+// import { getBehaviouralQuestionsTool } from "@/lib/ai/tools/behavioural-questions";
 
 export type CreateMockInterviewStreamOptions = {
   messages: ChatMessage[];
@@ -24,7 +24,7 @@ export function createMockInterviewStream({
 
 你的任务是进行模拟面试，帮助用户准备真实的面试场景。
 
-当用户提问到 HR 行为面试时，要使用 getBehaviouralQuestionsTool 工具来获取行为面试题和答案，然后基于获取的内容来回答用户的问题。
+// 当用户提问到 HR 行为面试时，要使用 getBehaviouralQuestionsTool 工具来获取行为面试题和答案，然后基于获取的内容来回答用户的问题。
 
 每次模拟面试最多 8-10 个问题，达到 8 个问题时，就要引导用户：你还有什么问题要问我？
 接下来就要引导用户结束面试，你要给出本次面试的综合点评。
@@ -57,10 +57,10 @@ export function createMockInterviewStream({
     model,
     system: systemPrompt,
     messages: convertToModelMessages(messages),
-    experimental_activeTools: ["getBehaviouralQuestions"],
-    tools: {
-      getBehaviouralQuestions: getBehaviouralQuestionsTool,
-    },
+    // experimental_activeTools: ["getBehaviouralQuestions"],
+    // tools: {
+    //   getBehaviouralQuestions: getBehaviouralQuestionsTool,
+    // },
     onFinish: createUsageFinishHandler({
       modelId: model.modelId,
       dataStream,
