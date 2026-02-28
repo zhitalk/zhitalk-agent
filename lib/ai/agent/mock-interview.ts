@@ -1,9 +1,9 @@
-import { convertToModelMessages, streamText, type UIMessageStreamWriter } from "ai";
+import { convertToModelMessages, stepCountIs, streamText, type UIMessageStreamWriter } from "ai";
 import type { ChatMessage } from "@/lib/types";
 import { myProvider } from "@/lib/ai/providers";
 import { createUsageFinishHandler } from "@/lib/ai/agent/common";
+import { createGetHrBehaviouralInterviewTool } from "@/lib/ai/mcp/interview-hr-questions";
 import type { AppUsage } from "@/lib/usage";
-// import { getBehaviouralQuestionsTool } from "@/lib/ai/tools/behavioural-questions";
 
 export type CreateMockInterviewStreamOptions = {
   messages: ChatMessage[];
@@ -14,17 +14,25 @@ export type CreateMockInterviewStreamOptions = {
 /**
  * 模拟程序员面试 AI Agent
  * 提供模拟面试服务，帮助用户准备面试
+ * 集成 interview-hr-questions MCP server，当用户提问 HR 行为面试时使用 get_hr_behavioural_interview 工具
  */
-export function createMockInterviewStream({
+export async function createMockInterviewStream({
   messages,
   dataStream,
   onUsageUpdate,
 }: CreateMockInterviewStreamOptions) {
+  // 使用「每次执行时新建 MCP 连接」的包装工具，避免模型生成后连接超时导致执行失败
+  const getHrBehaviouralInterviewTool = createGetHrBehaviouralInterviewTool();
+
+  const tools = {
+    get_hr_behavioural_interview: getHrBehaviouralInterviewTool,
+  };
+
   const systemPrompt = `你叫“智语”，是一个专业的程序员面试官，擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
 
 你的任务是进行模拟面试，帮助用户准备真实的面试场景。
 
-// 当用户提问到 HR 行为面试时，要使用 getBehaviouralQuestionsTool 工具来获取行为面试题和答案，然后基于获取的内容来回答用户的问题。
+当用户提问到“前端面试派网站 HR 行为面试题和答案”时，务必使用 get_hr_behavioural_interview 工具获取完整的行为面试题和答案，然后基于获取内容回答。不要跳过工具直接回答。
 
 每次模拟面试最多 8-10 个问题，达到 8 个问题时，就要引导用户：你还有什么问题要问我？
 接下来就要引导用户结束面试，你要给出本次面试的综合点评。
@@ -53,19 +61,20 @@ export function createMockInterviewStream({
 
   const model = myProvider.languageModel("chat-model");
 
+  const baseOnFinish = createUsageFinishHandler({
+    modelId: model.modelId,
+    dataStream,
+    onUsageUpdate,
+  });
+
   return streamText({
     model,
     system: systemPrompt,
     messages: convertToModelMessages(messages),
-    // experimental_activeTools: ["getBehaviouralQuestions"],
-    // tools: {
-    //   getBehaviouralQuestions: getBehaviouralQuestionsTool,
-    // },
-    onFinish: createUsageFinishHandler({
-      modelId: model.modelId,
-      dataStream,
-      onUsageUpdate,
-    }),
+    stopWhen: stepCountIs(5),
+    tools,
+    experimental_activeTools: ["get_hr_behavioural_interview"],
+    onFinish: baseOnFinish,
   });
 }
 

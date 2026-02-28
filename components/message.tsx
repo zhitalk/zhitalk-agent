@@ -284,6 +284,66 @@ const PurePreviewMessage = ({
               );
             }
 
+            // MCP 及其他工具调用的通用展示（如 get_hr_behavioural_interview）
+            if (type.startsWith("tool-")) {
+              const toolPart = part as {
+                toolCallId: string;
+                state?: "input-streaming" | "input-available" | "output-available" | "output-error";
+                input?: unknown;
+                output?: unknown;
+                errorText?: string;
+              };
+              const { toolCallId, state: toolState } = toolPart;
+              const state = toolState ?? "output-available";
+
+              const formatMcpOutput = (output: unknown) => {
+                if (output === undefined || output === null) return null;
+                if (typeof output === "string") return output;
+                if (
+                  typeof output === "object" &&
+                  "content" in output &&
+                  Array.isArray((output as { content: unknown[] }).content)
+                ) {
+                  const content = (output as { content: Array<{ type?: string; text?: string }> }).content;
+                  return content
+                    .filter((c) => c.type === "text" && c.text)
+                    .map((c) => c.text)
+                    .join("\n\n");
+                }
+                if (typeof output === "object" && "toolResult" in output) {
+                  return JSON.stringify((output as { toolResult: unknown }).toolResult, null, 2);
+                }
+                return JSON.stringify(output, null, 2);
+              };
+
+              return (
+                <Tool defaultOpen={true} key={toolCallId}>
+                  <ToolHeader state={state} type={type as `tool-${string}`} />
+                  <ToolContent>
+                    {state === "input-available" && toolPart.input !== undefined && (
+                      <ToolInput input={toolPart.input} />
+                    )}
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={toolPart.errorText}
+                        output={
+                          <div className="whitespace-pre-wrap text-sm">
+                            {formatMcpOutput(toolPart.output)}
+                          </div>
+                        }
+                      />
+                    )}
+                    {state === "output-error" && (
+                      <ToolOutput
+                        errorText={toolPart.errorText ?? String(toolPart.output)}
+                        output={null}
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
             return null;
           })}
 

@@ -47,7 +47,7 @@ export function createChatStream({
         });
       } else if (classification.mock_interview) {
         // 模拟面试
-        result = createMockInterviewStream({
+        result = await createMockInterviewStream({
           messages,
           dataStream,
           onUsageUpdate: (usage) => {
