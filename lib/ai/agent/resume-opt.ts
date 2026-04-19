@@ -8,6 +8,7 @@ import { getResumeTemplateTool } from "@/lib/ai/tools/resume-template";
 
 export type CreateResumeOptStreamOptions = {
   messages: ChatMessage[];
+  systemContext?: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   onUsageUpdate?: (usage: AppUsage) => void;
 };
@@ -18,10 +19,11 @@ export type CreateResumeOptStreamOptions = {
  */
 export function createResumeOptStream({
   messages,
+  systemContext,
   dataStream,
   onUsageUpdate,
 }: CreateResumeOptStreamOptions) {
-  const systemPrompt = `你叫“智语”，你的角色是：资深程序员 + 简历优化专家，最擅长程序员简历的评审和优化。
+  const baseSystemPrompt = `你叫“智语”，你的角色是：资深程序员 + 简历优化专家，最擅长程序员简历的评审和优化。
 
 请根据用户的消息内容，判断用户是否已经提供了简历内容：
 
@@ -55,11 +57,14 @@ export function createResumeOptStream({
    
    **回复格式要求：**
    - 先给出点评
-    - 综合评分（5-10分）
+   - 综合评分（5-10分）
     - 优点
     - 不足
    - 然后给出具体的修改建议
 `;
+  const systemPrompt = [baseSystemPrompt, systemContext]
+    .filter(Boolean)
+    .join("\n\n");
   const model = myProvider.languageModel("chat-model");
 
   return streamText({

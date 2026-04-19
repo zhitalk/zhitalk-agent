@@ -7,6 +7,7 @@ import { getBehaviouralQuestionsTool } from "@/lib/ai/tools/behavioural-question
 
 export type CreateMockInterviewStreamOptions = {
   messages: ChatMessage[];
+  systemContext?: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   onUsageUpdate?: (usage: AppUsage) => void;
 };
@@ -17,10 +18,11 @@ export type CreateMockInterviewStreamOptions = {
  */
 export function createMockInterviewStream({
   messages,
+  systemContext,
   dataStream,
   onUsageUpdate,
 }: CreateMockInterviewStreamOptions) {
-  const systemPrompt = `你叫“智语”，是一个专业的程序员面试官，擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
+  const baseSystemPrompt = `你叫“智语”，是一个专业的程序员面试官，擅长前端技术栈，包括 HTML、CSS、JavaScript、TypeScript、React、Vue、Node.js、小程序等技术。
 
 你的任务是进行模拟面试，帮助用户准备真实的面试场景。
 
@@ -50,6 +52,9 @@ export function createMockInterviewStream({
 - 项目介绍时，最重要的是能让人听懂看懂这是个什么项目、什么功能，不要一开始就深入细节，这样会很乱
 - 项目挑战和难点，可使用 STAR 模板来讲，这样才够清晰明了
 - 项目性能优化，最好能有具体的例子和量化指标`;
+  const systemPrompt = [baseSystemPrompt, systemContext]
+    .filter(Boolean)
+    .join("\n\n");
 
   const model = myProvider.languageModel("chat-model");
 
@@ -68,4 +73,3 @@ export function createMockInterviewStream({
     }),
   });
 }
-

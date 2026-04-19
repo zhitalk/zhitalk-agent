@@ -44,6 +44,10 @@ import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
 
+const FIXED_PDF_URL =
+  "https://chat-file-prod.shuibuzhuo.fun/%E6%9D%8E%E6%98%8E-%E5%89%8D%E7%AB%AF%E5%BC%80%E5%8F%91%E5%B7%A5%E7%A8%8B%E5%B8%88%E7%AE%80%E5%8E%86.pdf";
+const MAX_PDF_SIZE = 1024 * 1024;
+
 function PureMultimodalInput({
   chatId,
   input,
@@ -163,117 +167,122 @@ function PureMultimodalInput({
     resetHeight,
   ]);
 
-  const uploadFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const response = await fetch("/api/files/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const { url, pathname, contentType } = data;
-
-        return {
-          url,
-          name: pathname,
-          contentType,
-        };
-      }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
-    }
-  }, []);
+  // const uploadFile = useCallback(async (file: File) => {
+  //   const formData = new FormData();
+  //   formData.append("file", file);
+  //
+  //   try {
+  //     const response = await fetch("/api/files/upload", {
+  //       method: "POST",
+  //       body: formData,
+  //     });
+  //
+  //     if (response.ok) {
+  //       const data = await response.json();
+  //       const { url, pathname, contentType } = data;
+  //
+  //       return {
+  //         url,
+  //         name: pathname,
+  //         contentType,
+  //       };
+  //     }
+  //     const { error } = await response.json();
+  //     toast.error(error);
+  //   } catch (_error) {
+  //     toast.error("Failed to upload file, please try again!");
+  //   }
+  // }, []);
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files || []);
+      const file = files[0];
 
-      setUploadQueue(files.map((file) => file.name));
-
-      try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
-        );
-
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
-      } catch (error) {
-        console.error("Error uploading files!", error);
-      } finally {
-        setUploadQueue([]);
-      }
-    },
-    [setAttachments, uploadFile]
-  );
-
-  const handlePaste = useCallback(
-    async (event: ClipboardEvent) => {
-      const items = event.clipboardData?.items;
-      if (!items) {
+      if (!file) {
         return;
       }
 
-      const imageItems = Array.from(items).filter((item) =>
-        item.type.startsWith("image/")
-      );
-
-      if (imageItems.length === 0) {
+      if (file.type !== "application/pdf") {
+        toast.error("Only PDF files are supported.");
+        event.target.value = "";
         return;
       }
 
-      // Prevent default paste behavior for images
-      event.preventDefault();
-
-      setUploadQueue((prev) => [...prev, "Pasted image"]);
-
-      try {
-        const uploadPromises = imageItems
-          .map((item) => item.getAsFile())
-          .filter((file): file is File => file !== null)
-          .map((file) => uploadFile(file));
-
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) =>
-            attachment !== undefined &&
-            attachment.url !== undefined &&
-            attachment.contentType !== undefined
-        );
-
-        setAttachments((curr) => [
-          ...curr,
-          ...(successfullyUploadedAttachments as Attachment[]),
-        ]);
-      } catch (error) {
-        console.error("Error uploading pasted images:", error);
-        toast.error("Failed to upload pasted image(s)");
-      } finally {
-        setUploadQueue([]);
+      if (file.size > MAX_PDF_SIZE) {
+        toast.error("PDF file size should be less than 500KB.");
+        event.target.value = "";
+        return;
       }
+
+      setAttachments([
+        {
+          name: file.name,
+          url: FIXED_PDF_URL,
+          contentType: "application/pdf",
+        },
+      ]);
     },
-    [setAttachments, uploadFile]
+    [setAttachments]
   );
 
-  // Add paste event listener to textarea
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-
-    textarea.addEventListener("paste", handlePaste);
-    return () => textarea.removeEventListener("paste", handlePaste);
-  }, [handlePaste]);
+  // const handlePaste = useCallback(
+  //   async (event: ClipboardEvent) => {
+  //     const items = event.clipboardData?.items;
+  //     if (!items) {
+  //       return;
+  //     }
+  //
+  //     const imageItems = Array.from(items).filter((item) =>
+  //       item.type.startsWith("image/")
+  //     );
+  //
+  //     if (imageItems.length === 0) {
+  //       return;
+  //     }
+  //
+  //     // Prevent default paste behavior for images
+  //     event.preventDefault();
+  //
+  //     setUploadQueue((prev) => [...prev, "Pasted image"]);
+  //
+  //     try {
+  //       const uploadPromises = imageItems
+  //         .map((item) => item.getAsFile())
+  //         .filter((file): file is File => file !== null)
+  //         .map((file) => uploadFile(file));
+  //
+  //       const uploadedAttachments = await Promise.all(uploadPromises);
+  //       const successfullyUploadedAttachments = uploadedAttachments.filter(
+  //         (attachment) =>
+  //           attachment !== undefined &&
+  //           attachment.url !== undefined &&
+  //           attachment.contentType !== undefined
+  //       );
+  //
+  //       setAttachments((curr) => [
+  //         ...curr,
+  //         ...(successfullyUploadedAttachments as Attachment[]),
+  //       ]);
+  //     } catch (error) {
+  //       console.error("Error uploading pasted images:", error);
+  //       toast.error("Failed to upload pasted image(s)");
+  //     } finally {
+  //       setUploadQueue([]);
+  //     }
+  //   },
+  //   [setAttachments, uploadFile]
+  // );
+  //
+  // useEffect(() => {
+  //   const textarea = textareaRef.current;
+  //   if (!textarea) {
+  //     return;
+  //   }
+  //
+  //   textarea.addEventListener("paste", handlePaste);
+  //   return () => textarea.removeEventListener("paste", handlePaste);
+  // }, [handlePaste]);
 
   return (
     <div className={cn("relative flex w-full flex-col gap-4", className)}>
@@ -288,8 +297,9 @@ function PureMultimodalInput({
         )}
 
       <input
+        accept="image/jpeg,image/png,application/pdf"
         className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
-        multiple
+        // multiple
         onChange={handleFileChange}
         ref={fileInputRef}
         tabIndex={-1}
@@ -358,11 +368,11 @@ function PureMultimodalInput({
         </div>
         <PromptInputToolbar className="!border-top-0 border-t-0! p-0 shadow-none dark:border-0 dark:border-transparent!">
           <PromptInputTools className="gap-0 sm:gap-0.5">
-            {/* <AttachmentsButton
+            <AttachmentsButton
               fileInputRef={fileInputRef}
               selectedModelId={selectedModelId}
               status={status}
-            /> */}
+            />
             <ModelSelectorCompact
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}

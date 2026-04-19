@@ -21,8 +21,14 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
+import {
+  buildMessageForModel,
+  buildPdfSystemContext,
+  extractPdfAttachments,
+  getPdfAttachmentsFromDb,
+} from "@/lib/pdf";
 import type { ChatMessage } from "@/lib/types";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import { buildMessagesForLLM, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -124,7 +130,12 @@ export async function POST(request: Request) {
       // New chat - no need to fetch messages, it's empty
     }
 
-    const uiMessages = [...convertToUIMessages(messagesFromDb), message];
+    const attachmentsForDb = await extractPdfAttachments(message);
+    const modelMessage = await buildMessageForModel(message, attachmentsForDb);
+    const messagesForLLM = [
+      ...buildMessagesForLLM(messagesFromDb),
+      modelMessage,
+    ];
 
     const { longitude, latitude, city, country } = geolocation(request);
 
@@ -134,6 +145,10 @@ export async function POST(request: Request) {
       city,
       country,
     };
+    const systemContext = buildPdfSystemContext([
+      ...getPdfAttachmentsFromDb(messagesFromDb),
+      ...attachmentsForDb,
+    ]);
 
     await saveMessages({
       messages: [
@@ -142,7 +157,7 @@ export async function POST(request: Request) {
           id: message.id,
           role: "user",
           parts: message.parts,
-          attachments: [],
+          attachments: attachmentsForDb,
           createdAt: new Date(),
         },
       ],
@@ -152,9 +167,10 @@ export async function POST(request: Request) {
     await createStreamId({ streamId, chatId: id });
 
     const stream = createChatStream({
-      messages: uiMessages,
+      messages: messagesForLLM,
       selectedChatModel,
       requestHints,
+      systemContext,
       session: session!,
       onFinish: async ({ messages: finishedMessages, usage }) => {
         await saveMessages({

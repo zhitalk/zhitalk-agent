@@ -14,6 +14,7 @@ export type CreateChatStreamOptions = {
   messages: ChatMessage[];
   selectedChatModel: ChatModel["id"];
   requestHints: RequestHints;
+  systemContext?: string;
   session: Session;
   onFinish?: (params: { messages: ChatMessage[]; usage?: AppUsage }) => void;
 };
@@ -22,6 +23,7 @@ export function createChatStream({
   messages,
   selectedChatModel,
   requestHints,
+  systemContext,
   session,
   onFinish,
 }: CreateChatStreamOptions) {
@@ -40,6 +42,7 @@ export function createChatStream({
         // 简历优化
         result = createResumeOptStream({
           messages,
+          systemContext,
           dataStream,
           onUsageUpdate: (usage) => {
             finalMergedUsage = usage;
@@ -49,6 +52,7 @@ export function createChatStream({
         // 模拟面试
         result = createMockInterviewStream({
           messages,
+          systemContext,
           dataStream,
           onUsageUpdate: (usage) => {
             finalMergedUsage = usage;
@@ -60,6 +64,7 @@ export function createChatStream({
           messages,
           selectedChatModel,
           requestHints,
+          systemContext,
           session,
           dataStream,
           onUsageUpdate: (usage) => {
@@ -92,4 +97,3 @@ export function createChatStream({
 
   return stream;
 }
-
