@@ -44,8 +44,6 @@ import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
 
-const FIXED_PDF_URL =
-  "https://chat-file-prod.shuibuzhuo.fun/%E6%9D%8E%E6%98%8E-%E5%89%8D%E7%AB%AF%E5%BC%80%E5%8F%91%E5%B7%A5%E7%A8%8B%E5%B8%88%E7%AE%80%E5%8E%86.pdf";
 const MAX_PDF_SIZE = 1024 * 1024;
 
 function PureMultimodalInput({
@@ -167,32 +165,33 @@ function PureMultimodalInput({
     resetHeight,
   ]);
 
-  // const uploadFile = useCallback(async (file: File) => {
-  //   const formData = new FormData();
-  //   formData.append("file", file);
-  //
-  //   try {
-  //     const response = await fetch("/api/files/upload", {
-  //       method: "POST",
-  //       body: formData,
-  //     });
-  //
-  //     if (response.ok) {
-  //       const data = await response.json();
-  //       const { url, pathname, contentType } = data;
-  //
-  //       return {
-  //         url,
-  //         name: pathname,
-  //         contentType,
-  //       };
-  //     }
-  //     const { error } = await response.json();
-  //     toast.error(error);
-  //   } catch (_error) {
-  //     toast.error("Failed to upload file, please try again!");
-  //   }
-  // }, []);
+  const uploadFile = useCallback(async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/files/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error ?? "Failed to upload file, please try again!");
+        return null;
+      }
+
+      return {
+        url: data.url as string,
+        name: file.name,
+        contentType: data.contentType as string,
+      };
+    } catch (_error) {
+      toast.error("Failed to upload file, please try again!");
+      return null;
+    }
+  }, []);
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -210,20 +209,27 @@ function PureMultimodalInput({
       }
 
       if (file.size > MAX_PDF_SIZE) {
-        toast.error("PDF file size should be less than 500KB.");
+        toast.error("PDF file size should be less than 1MB.");
         event.target.value = "";
         return;
       }
 
-      setAttachments([
-        {
-          name: file.name,
-          url: FIXED_PDF_URL,
-          contentType: "application/pdf",
-        },
-      ]);
+      setUploadQueue([file.name]);
+
+      try {
+        const attachment = await uploadFile(file);
+
+        if (!attachment) {
+          return;
+        }
+
+        setAttachments([attachment]);
+      } finally {
+        setUploadQueue([]);
+        event.target.value = "";
+      }
     },
-    [setAttachments]
+    [setAttachments, uploadFile]
   );
 
   // const handlePaste = useCallback(
