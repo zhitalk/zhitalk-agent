@@ -1,24 +1,28 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
+import { v4 as uuidv4 } from "uuid";
 import { z } from "zod";
 
 import { auth } from "@/app/(auth)/auth";
+import {
+  getOssClient,
+  MAX_UPLOAD_FILE_SIZE,
+  replaceOssUrlWithCdn,
+} from "@/lib/oss";
 
-// Use Blob instead of File since File is not available in Node.js environment
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
-      message: "File size should be less than 5MB",
+    .refine((file) => file.size <= MAX_UPLOAD_FILE_SIZE, {
+      message: "File size should be less than 1MB",
     })
-    .refine(
-      (file) =>
-        ["image/jpeg", "image/png", "application/pdf"].includes(file.type),
-      {
-        message: "File type should be JPEG, PNG or PDF",
-      }
-    ),
+    .refine((file) => file.type === "application/pdf", {
+      message: "Only PDF files are supported",
+    }),
 });
+
+function buildPdfObjectKey(userId: string) {
+  return `files/u-${userId}/pdfs/${uuidv4()}.pdf`;
+}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -33,9 +37,9 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
-    const file = formData.get("file") as Blob;
+    const file = formData.get("file");
 
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
@@ -49,18 +53,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
-    // Get filename from formData since Blob doesn't have name property
-    const filename = (formData.get("file") as File).name;
+    const ossClient = getOssClient();
+
+    if (!ossClient) {
+      return NextResponse.json(
+        { error: "OSS configuration is missing" },
+        { status: 500 }
+      );
+    }
+
+    const objectKey = buildPdfObjectKey(session.user.id);
     const fileBuffer = await file.arrayBuffer();
 
     try {
-      const data = await put(`${filename}`, fileBuffer, {
-        access: "public",
+      const result = await ossClient.put(objectKey, Buffer.from(fileBuffer), {
+        mime: file.type,
       });
 
-      return NextResponse.json(data);
+      return NextResponse.json({
+        url: replaceOssUrlWithCdn(result.url),
+        pathname: objectKey,
+        contentType: file.type,
+      });
     } catch (_error) {
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+      return NextResponse.json({ error: "OSS upload failed" }, { status: 500 });
     }
   } catch (_error) {
     return NextResponse.json(
