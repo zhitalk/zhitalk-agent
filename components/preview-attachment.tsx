@@ -14,6 +14,7 @@ export const PreviewAttachment = ({
   onRemove?: () => void;
 }) => {
   const { name, url, contentType } = attachment;
+  const canOpenAttachment = !isUploading && Boolean(url);
 
   return (
     <div
@@ -71,9 +72,19 @@ export const PreviewAttachment = ({
         </div>
       )}
 
+      {canOpenAttachment && (
+        <a
+          aria-label={`Open ${name}`}
+          className="absolute inset-0 z-10"
+          href={url}
+          rel="noreferrer"
+          target="_blank"
+        />
+      )}
+
       {isUploading && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-black/50"
+          className="absolute inset-0 z-20 flex items-center justify-center bg-black/50"
           data-testid="input-attachment-loader"
         >
           <Loader size={16} />
@@ -82,7 +93,7 @@ export const PreviewAttachment = ({
 
       {onRemove && !isUploading && (
         <Button
-          className="absolute top-0.5 right-0.5 size-4 rounded-full p-0 opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute top-0.5 right-0.5 z-20 size-4 rounded-full p-0 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={onRemove}
           size="sm"
           variant="destructive"
@@ -91,7 +102,7 @@ export const PreviewAttachment = ({
         </Button>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/80 to-transparent px-1 py-0.5 text-[10px] text-white">
+      <div className="absolute inset-x-0 bottom-0 z-20 truncate bg-linear-to-t from-black/80 to-transparent px-1 py-0.5 text-[10px] text-white">
         {name}
       </div>
     </div>

@@ -46,22 +46,8 @@ import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
 import type { VisibilityType } from "./visibility-selector";
 
-const readFileAsBase64 = (inputFile: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result === "string") {
-        // Remove the data URL prefix (e.g., "data:image/png;base64,")
-        const base64 = result.split(",")[1] ?? "";
-        resolve(base64);
-      } else {
-        reject(new Error("Failed to read file as base64 string."));
-      }
-    };
-    reader.onerror = () => reject(new Error("FileReader error"));
-    reader.readAsDataURL(inputFile);
-});
+const FIXED_PDF_URL = "https://chat-file-prod.shuibuzhuo.fun/%E6%9D%8E%E6%98%8E-%E5%89%8D%E7%AB%AF%E5%BC%80%E5%8F%91%E5%B7%A5%E7%A8%8B%E5%B8%88%E7%AE%80%E5%8E%86.pdf";
+const MAX_PDF_SIZE = 1024 * 1024;
 
 function PureMultimodalInput({
   chatId,
@@ -154,7 +140,6 @@ function PureMultimodalInput({
         ...attachments.map((attachment) => ({
           type: "file" as const,
           url: attachment.url,
-          base64: attachment.base64,
           name: attachment.name,
           mediaType: attachment.contentType,
         })),
@@ -228,13 +213,23 @@ function PureMultimodalInput({
         return;
       }
 
-      const base64 = await readFileAsBase64(file);
+      if (file.type !== "application/pdf") {
+        toast.error("Only PDF files are supported.");
+        event.target.value = "";
+        return;
+      }
+
+      if (file.size > MAX_PDF_SIZE) {
+        toast.error("PDF file size should be less than 500KB.");
+        event.target.value = "";
+        return;
+      }
+
       setAttachments([
         {
           name: file.name,
-          url: "",
-          base64,
-          contentType: file.type,
+          url: FIXED_PDF_URL,
+          contentType: "application/pdf",
         }
       ]);
     },

@@ -39,9 +39,15 @@ import {
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
+import {
+  buildMessageForModel,
+  buildPdfSystemContext,
+  extractPdfAttachments,
+  getPdfAttachmentsFromDb,
+} from "@/lib/pdf";
 import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
-import { convertToUIMessages, generateUUID } from "@/lib/utils";
+import { buildMessagesForLLM, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
 
@@ -126,31 +132,12 @@ export async function POST(request: Request) {
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 
-    // console.log("message...", message)
-
-    // Extract base64 from file parts and create newMessage 
-    let base64Value: string | undefined;
-    const newParts = message.parts.map((part) => {
-      if (
-        part.type === "file" &&
-        "base64" in part &&
-        typeof part.base64 === "string"
-      ) {
-        base64Value = part.base64;
-        // @ts-ignore Create a new text part 
-        return { type: "text", text: `<${part.name as string}>` };
-      }
-      return part;
-    });
-
-    const newMessage: ChatMessage = {
-      ...message,
-      // @ts-ignore 
-      parts: newParts,
-    };
-
-    console.log("base64 value:", base64Value);
-    console.log("newMessage...", newMessage)
+    const newMessage: ChatMessage = message;
+    const attachmentsForDb = await extractPdfAttachments(message);
+    const modelMessage = await buildMessageForModel(
+      message,
+      attachmentsForDb
+    );
 
     const chat = await getChatById({ id });
     let messagesFromDb: DBMessage[] = [];
@@ -175,7 +162,11 @@ export async function POST(request: Request) {
       // New chat - no need to fetch messages, it's empty
     }
 
-    const uiMessages = [...convertToUIMessages(messagesFromDb), newMessage];
+    const messagesForLLM = [
+      ...buildMessagesForLLM(messagesFromDb),
+      modelMessage,
+    ];
+
 
     const { longitude, latitude, city, country } = geolocation(request);
 
@@ -186,6 +177,17 @@ export async function POST(request: Request) {
       country,
     };
 
+    const pdfSystemContext = buildPdfSystemContext([
+      ...getPdfAttachmentsFromDb(messagesFromDb),
+      ...attachmentsForDb,
+    ]);
+    const system = [
+      systemPrompt({ selectedChatModel, requestHints }),
+      pdfSystemContext,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     await saveMessages({
       messages: [
         {
@@ -193,7 +195,7 @@ export async function POST(request: Request) {
           id: newMessage.id,
           role: "user",
           parts: newMessage.parts,
-          attachments: [],
+          attachments: attachmentsForDb,
           createdAt: new Date(),
         },
       ],
@@ -208,8 +210,8 @@ export async function POST(request: Request) {
       execute: ({ writer: dataStream }) => {
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
-          messages: convertToModelMessages(uiMessages),
+          system,
+          messages: convertToModelMessages(messagesForLLM),
           stopWhen: stepCountIs(5),
           experimental_activeTools:
             selectedChatModel === "chat-model-reasoning"

@@ -10,7 +10,6 @@ const filePartSchema = z.object({
   mediaType: z.enum(["image/jpeg", "image/png", "application/pdf"]),
   name: z.string().min(1).max(100),
   url: z.string().optional(),
-  base64: z.string().optional(),
 });
 
 const partSchema = z.union([textPartSchema, filePartSchema]);
