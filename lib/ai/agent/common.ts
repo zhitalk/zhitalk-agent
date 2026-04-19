@@ -105,6 +105,7 @@ export type CreateDefaultStreamOptions = {
   messages: ChatMessage[];
   selectedChatModel: ChatModel["id"];
   requestHints: RequestHints;
+  systemContext?: string;
   session: Session;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   onUsageUpdate?: (usage: AppUsage) => void;
@@ -114,13 +115,18 @@ export function createDefaultStream({
   messages,
   selectedChatModel,
   requestHints,
+  systemContext,
   session,
   dataStream,
   onUsageUpdate,
 }: CreateDefaultStreamOptions) {
+  const system = [systemPrompt({ selectedChatModel, requestHints }), systemContext]
+    .filter(Boolean)
+    .join("\n\n");
+
   return streamText({
     model: myProvider.languageModel(selectedChatModel),
-    system: systemPrompt({ selectedChatModel, requestHints }),
+    system,
     messages: convertToModelMessages(messages),
     stopWhen: stepCountIs(5),
     experimental_activeTools:
@@ -153,4 +159,3 @@ export function createDefaultStream({
     }),
   });
 }
-

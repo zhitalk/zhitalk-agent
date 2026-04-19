@@ -108,6 +108,41 @@ export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
   }));
 }
 
+export function buildMessagesForLLM(messages: DBMessage[]): ChatMessage[] {
+  return messages.map((message) => {
+    const originalParts =
+      message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[];
+    const parts: UIMessagePart<CustomUIDataTypes, ChatTools>[] = [];
+
+    for (const part of originalParts) {
+      if (part.type === "file" && part.mediaType === "application/pdf") {
+        const fileName =
+          part.filename ??
+          ("name" in part && typeof part.name === "string"
+            ? part.name
+            : "未命名文件.pdf");
+
+        parts.push({
+          type: "text",
+          text: `用户上传了一个 PDF 文件：${fileName}`,
+        });
+        continue;
+      }
+
+      parts.push(part);
+    }
+
+    return {
+      id: message.id,
+      role: message.role as "user" | "assistant" | "system",
+      parts,
+      metadata: {
+        createdAt: formatISO(message.createdAt),
+      },
+    };
+  });
+}
+
 export function getTextFromMessage(message: ChatMessage | UIMessage): string {
   return message.parts
     .filter((part) => part.type === 'text')
