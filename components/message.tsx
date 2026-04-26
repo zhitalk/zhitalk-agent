@@ -199,10 +199,26 @@ const PurePreviewMessage = ({
             }
 
             if (type === "tool-getBehaviouralQuestions") {
-              const { toolCallId } = part;
+              const { toolCallId, state } = part;
               return (
                 <div key={toolCallId}>
-                  <Response>{part.output?.content ?? "请稍后..."}</Response>
+                  <div className="text-muted-foreground text-sm">
+                    已获取行为面试参考资料 ✅
+                  </div>
+                  <Tool defaultOpen={false}>
+                    <ToolHeader
+                      state={state}
+                      type="tool-getBehaviouralQuestions"
+                    />
+                    <ToolContent>
+                      {state === "output-available" && (
+                        <ToolOutput
+                          errorText={undefined}
+                          output={part.output?.content ?? "请稍后..."}
+                        />
+                      )}
+                    </ToolContent>
+                  </Tool>
                 </div>
               );
             }

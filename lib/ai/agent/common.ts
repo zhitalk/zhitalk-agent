@@ -1,9 +1,9 @@
 import {
   convertToModelMessages,
+  type LanguageModelUsage,
   smoothStream,
   stepCountIs,
   streamText,
-  type LanguageModelUsage,
   type UIMessageStreamWriter,
 } from "ai";
 import { unstable_cache as cache } from "next/cache";
@@ -11,15 +11,16 @@ import type { Session } from "next-auth";
 import type { ModelCatalog } from "tokenlens/core";
 import { fetchModels } from "tokenlens/fetch";
 import { getUsage } from "tokenlens/helpers";
-import type { ChatMessage } from "@/lib/types";
 import type { ChatModel } from "@/lib/ai/models";
-import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
+import type { RequestHints } from "@/lib/ai/prompts";
+import { systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
-import { createDocument } from "@/lib/ai/tools/create-document";
-import { getWeather } from "@/lib/ai/tools/get-weather";
-import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
-import { updateDocument } from "@/lib/ai/tools/update-document";
+import { buildSkillsSystemContext } from "@/lib/ai/skills/runtime";
+import { getBehaviouralQuestionsTool } from "@/lib/ai/tools/behavioural-questions";
+import { getSkillTool } from "@/lib/ai/tools/get-skill";
+import { getResumeTemplateTool } from "@/lib/ai/tools/resume-template";
 import { isProductionEnvironment } from "@/lib/constants";
+import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 
 const getTokenlensCatalog = cache(
@@ -111,7 +112,8 @@ export type CreateDefaultStreamOptions = {
   onUsageUpdate?: (usage: AppUsage) => void;
 };
 
-export function createDefaultStream({
+// 创建通用聊天流并注入 skills 能力
+export async function createDefaultStream({
   messages,
   selectedChatModel,
   requestHints,
@@ -120,7 +122,12 @@ export function createDefaultStream({
   dataStream,
   onUsageUpdate,
 }: CreateDefaultStreamOptions) {
-  const system = [systemPrompt({ selectedChatModel, requestHints }), systemContext]
+  const skillsSystemContext = await buildSkillsSystemContext();
+  const system = [
+    systemPrompt({ selectedChatModel, requestHints }),
+    skillsSystemContext,
+    systemContext,
+  ]
     .filter(Boolean)
     .join("\n\n");
 
@@ -133,6 +140,9 @@ export function createDefaultStream({
       selectedChatModel === "chat-model-reasoning"
         ? []
         : [
+            "getSkill",
+            "getBehaviouralQuestions",
+            "getResumeTemplate",
             // "getWeather",
             // "createDocument",
             // "updateDocument",
@@ -140,6 +150,9 @@ export function createDefaultStream({
           ],
     experimental_transform: smoothStream({ chunking: "word" }),
     tools: {
+      getSkill: getSkillTool,
+      getBehaviouralQuestions: getBehaviouralQuestionsTool,
+      getResumeTemplate: getResumeTemplateTool,
       // getWeather,
       // createDocument: createDocument({ session, dataStream }),
       // updateDocument: updateDocument({ session, dataStream }),
