@@ -1,14 +1,11 @@
 import { createUIMessageStream } from "ai";
 import type { Session } from "next-auth";
-import type { ChatMessage } from "@/lib/types";
+import { createDefaultStream } from "@/lib/ai/agent/common";
 import type { ChatModel } from "@/lib/ai/models";
-import { type RequestHints } from "@/lib/ai/prompts";
+import type { RequestHints } from "@/lib/ai/prompts";
+import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
 import { generateUUID } from "@/lib/utils";
-import { classifyMessages } from "@/lib/ai/agent/classify";
-import { createResumeOptStream } from "@/lib/ai/agent/resume-opt";
-import { createMockInterviewStream } from "@/lib/ai/agent/mock-interview";
-import { createDefaultStream } from "@/lib/ai/agent/common";
 
 export type CreateChatStreamOptions = {
   messages: ChatMessage[];
@@ -19,6 +16,7 @@ export type CreateChatStreamOptions = {
   onFinish?: (params: { messages: ChatMessage[]; usage?: AppUsage }) => void;
 };
 
+// 根据分类结果创建对应的聊天流
 export function createChatStream({
   messages,
   selectedChatModel,
@@ -31,47 +29,19 @@ export function createChatStream({
 
   const stream = createUIMessageStream({
     execute: async ({ writer: dataStream }) => {
-      // 先进行消息分类
-      const classification = await classifyMessages(messages);
-      // console.log("classification => ", classification);
+      const onUsageUpdate = (usage: AppUsage) => {
+        finalMergedUsage = usage;
+      };
 
-      let result;
-
-      // 根据分类结果选择不同的处理方式
-      if (classification.resume_opt) {
-        // 简历优化
-        result = createResumeOptStream({
-          messages,
-          systemContext,
-          dataStream,
-          onUsageUpdate: (usage) => {
-            finalMergedUsage = usage;
-          },
-        });
-      } else if (classification.mock_interview) {
-        // 模拟面试
-        result = createMockInterviewStream({
-          messages,
-          systemContext,
-          dataStream,
-          onUsageUpdate: (usage) => {
-            finalMergedUsage = usage;
-          },
-        });
-      } else {
-        // 其他情况，执行原有逻辑
-        result = createDefaultStream({
-          messages,
-          selectedChatModel,
-          requestHints,
-          systemContext,
-          session,
-          dataStream,
-          onUsageUpdate: (usage) => {
-            finalMergedUsage = usage;
-          },
-        });
-      }
+      const result = await createDefaultStream({
+        messages,
+        selectedChatModel,
+        requestHints,
+        systemContext,
+        session,
+        dataStream,
+        onUsageUpdate,
+      });
 
       result.consumeStream();
 

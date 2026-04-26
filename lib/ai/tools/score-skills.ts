@@ -22,7 +22,6 @@ export const scoreSkills = tool({
       .describe("技能列表，例如：['Java', 'Spring Boot', 'MySQL', 'Redis']"),
   }),
   execute: async ({ graduationYear, skills }) => {
-    console.log('scoreSkills...');
     const currentYear = new Date().getFullYear();
     const yearsOfExperience = currentYear - graduationYear;
     const skillCount = skills.length;
@@ -176,13 +175,9 @@ export const scoreSkills = tool({
       .filter((s) => s)
       .join(" ");
 
-    console.log('scoreSkills result => ', {
-      score,
-    });
     return {
       score,
       suggestion,
     };
   },
 });
-

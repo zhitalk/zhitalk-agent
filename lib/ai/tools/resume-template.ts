@@ -37,7 +37,6 @@ export const getResumeTemplateTool = tool({
   description: "获取程序员简历模板。当用户需要查看简历模板或不知道如何写简历时，可以使用此工具获取标准的简历模板格式。",
   inputSchema: z.object({}),
   execute: async () => {
-    // console.log("getResumeTemplateTool called ......");
     const template = await getResumeTemplate();
     return {
       template,

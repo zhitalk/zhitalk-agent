@@ -1,11 +1,12 @@
 import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
 import type { ArtifactKind } from "@/components/artifact";
-import type { createDocument } from "./ai/tools/create-document";
-import type { getWeather } from "./ai/tools/get-weather";
-import type { getResumeTemplateTool } from "./ai/tools/resume-template";
 import type { getBehaviouralQuestionsTool } from "./ai/tools/behavioural-questions";
+import type { createDocument } from "./ai/tools/create-document";
+import type { getSkillTool } from "./ai/tools/get-skill";
+import type { getWeather } from "./ai/tools/get-weather";
 import type { requestSuggestions } from "./ai/tools/request-suggestions";
+import type { getResumeTemplateTool } from "./ai/tools/resume-template";
 import type { updateDocument } from "./ai/tools/update-document";
 import type { Suggestion } from "./db/schema";
 import type { AppUsage } from "./usage";
@@ -25,7 +26,10 @@ type requestSuggestionsTool = InferUITool<
   ReturnType<typeof requestSuggestions>
 >;
 type getResumeTemplateToolType = InferUITool<typeof getResumeTemplateTool>;
-type getBehaviouralQuestionsToolType = InferUITool<typeof getBehaviouralQuestionsTool>;
+type getBehaviouralQuestionsToolType = InferUITool<
+  typeof getBehaviouralQuestionsTool
+>;
+type getSkillToolType = InferUITool<typeof getSkillTool>;
 
 export type ChatTools = {
   getWeather: weatherTool;
@@ -34,6 +38,7 @@ export type ChatTools = {
   requestSuggestions: requestSuggestionsTool;
   getResumeTemplate: getResumeTemplateToolType;
   getBehaviouralQuestions: getBehaviouralQuestionsToolType;
+  getSkill: getSkillToolType;
 };
 
 export type CustomUIDataTypes = {
